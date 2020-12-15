@@ -4,7 +4,8 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const users = require('./src/users/users.api')
-const accessTokenSecret = 'verysecretkey';
+const projects = require('./src/projects/projects.api')
+require('dotenv').config()
 
 mongoose.connect('mongodb://localhost:27017/task_manager', {useNewUrlParser: true, useUnifiedTopology: true}, () => {
     console.log('Successfully connected with MongoDB');
@@ -20,6 +21,7 @@ app.get('/api/', (req, res) => {
     res.send('Whatcha looking for here?');
 });
 app.use('/api/users', users);
+app.use('/api/projects', projects);
 
 
 app.listen(3000, () => {
