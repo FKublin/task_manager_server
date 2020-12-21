@@ -7,11 +7,11 @@ const projectSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    admin: {
+    admins: [{
         type: Schema.Types.ObjectId, 
         ref: 'user', 
         required: true
-    },
+    }],
     users: [{
         type: Schema.Types.ObjectId, 
         ref: 'user'

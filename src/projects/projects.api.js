@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const project = require('./projects.model');
-const user = require('../users/users.model')
+const user = require('../users/users.model');
+const task = require('../tasks/tasks.model');
 const verify = require('../verifyToken');
 const jwt_decode = require('jwt-decode')
 var middleware = require('../middleware');
@@ -26,7 +27,7 @@ router.post('/', /*verify, */async (req, res) => {
         console.log(currentUserId);
         const createProject = new project({
             projectName: req.body.projectName,
-            admin: currentUserId,
+            admins: currentUserId,
             users: currentUserId
         });
 
@@ -40,6 +41,22 @@ router.post('/', /*verify, */async (req, res) => {
 
     } catch(err) {
         res.status(400).json({message: err.message});
+    }
+});
+
+router.post('/:id/tasks', verify, middleware.getProject, async (req,res) => {
+    
+    const newTask = new task.model({
+
+    });
+    const projectParent = res.project;
+    
+    try {
+        projectParent.tasks.push(newTask);
+        await projectParent.save();
+        res.json({message: 'Task has been added to the project'});
+    } catch(err) {
+        res.status(500).send({message: err.message});
     }
 });
 
