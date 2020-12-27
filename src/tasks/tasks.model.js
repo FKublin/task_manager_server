@@ -10,13 +10,14 @@ const taskSchema = new mongoose.Schema({
     startDate:
     {
         type: Date,
-        required: true
+        required: true,
+        default: Date.now()
     },
     endDate: Date,
-    assignees: [{
+    taskHolder: {
         type: Schema.Types.ObjectId, 
         ref: 'user'
-    }],
+    },
     isCompleted: {
         type: Boolean,
         default: false
