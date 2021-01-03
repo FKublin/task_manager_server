@@ -7,7 +7,7 @@ const verify = require('../verifyToken');
 const jwt_decode = require('jwt-decode')
 var middleware = require('../middleware');
 
-router.get('/',/*verify, */ async (req, res) => {
+router.get('/', verify, async (req, res) => {
     try {
         const currentUserId = (jwt_decode(req.header('auth-token')))._id;
         const projects = await project.find({users: currentUserId});
@@ -19,14 +19,21 @@ router.get('/',/*verify, */ async (req, res) => {
 
 });
 
-router.get('/:id/tasks', /*verify,*/ middleware.getProject, async (req, res) => {
+router.get('/:id/tasks', verify, middleware.getProject, async (req, res) => {
+    const currentUserId = (jwt_decode(req.header('auth-token')))._id
     const projectParent = res.project;
+    console.log(projectParent)
     const usersFound = await user.find({_id: projectParent.users});
+    var isAdmin = false
+    if(projectParent.admins.find(userId => userId==currentUserId))
+        isAdmin = true
+    console.log(isAdmin);
+
     var users = [];
     usersFound.forEach((user) => {
         users.push({id: user._id, userName: user.displayName})
     })
-    res.json({data: res.project.tasks, users});
+    res.json({data: res.project.tasks, users, isAdmin});
     console.log(res.json);
     console.log('Project tasks fetched');
 
@@ -62,8 +69,8 @@ router.post('/:id/tasks', verify, middleware.getProject, async (req,res) => {
     console.log(req.body);
     const newTask = new task({
         taskName: req.body.taskName,
-        //endDate: req.body.endDate,
-        //taskHolder: req.body.taskHolder
+        endDate: new Date(req.body.endDate),
+        taskHolder: req.body.taskHolder
 
     });
     const projectParent = res.project;
@@ -87,6 +94,19 @@ router.delete('/:id/tasks/:taskId', verify, middleware.getTask, async (req, res)
         console.log(err.message);
     }
     
+});
+
+router.delete('/:id/users/:userId', verify, middleware.getProject, async (req, res) => {
+    console.log('Trying to delete a user')
+    var oneProject = res.project;
+    if(oneProject.tasks.filter(task => task.taskHolder === req.params.userId).length > 0){
+        return res.status(400).send({message:'That user still holds tasks and cannot be deleted from this project'});
+    }
+    try{
+        await project.update({_id: req.params.id}, {$pull: {users: req.params.userId}})
+        res.json({message: 'User has been deleted from this project'})
+    }
+    catch(err) {}
 });
 
 router.post('/:id/users', verify, middleware.getProject, async (req, res) => {
