@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
+const comment = require('./comment.model')
 
 
 const taskSchema = new mongoose.Schema({
@@ -21,7 +22,8 @@ const taskSchema = new mongoose.Schema({
     isCompleted: {
         type: Boolean,
         default: false
-    }
+    },
+    comments: [comment.schema]
 })
 
 module.exports = mongoose.model('task', taskSchema);
