@@ -8,6 +8,7 @@ const verify = require('../verifyToken');
 const jwt_decode = require('jwt-decode')
 var middleware = require('../middleware');
 
+//get all projects for current user
 router.get('/', verify, async (req, res) => {
     try {
         const currentUserId = (jwt_decode(req.header('auth-token')))._id;
@@ -20,26 +21,39 @@ router.get('/', verify, async (req, res) => {
 
 });
 
+//get tasks for specified project
 router.get('/:id/tasks', verify, middleware.getProject, async (req, res) => {
     const currentUserId = (jwt_decode(req.header('auth-token')))._id
     const projectParent = res.project;
-    //console.log(projectParent)
+
     const usersFound = await user.find({_id: projectParent.users});
     var isAdmin = false
     if(projectParent.admins.find(userId => userId==currentUserId))
         isAdmin = true
-    //console.log(isAdmin);
+
+    var projectJSON = projectParent.toObject();
+    console.log("Current user: " + currentUserId)
+    projectJSON.tasks.forEach((task) => {
+        if(currentUserId==task.taskHolder)
+            task.isMine = true;
+        else
+            task.isMine = false;
+    })
+    console.log(projectJSON);
+
+    //console.log(res.project.tasks);
 
     var users = [];
     usersFound.forEach((user) => {
         users.push({id: user._id, userName: user.displayName})
     })
-    res.json({data: res.project.tasks, users, isAdmin});
+    res.json({data: projectJSON.tasks, users, isAdmin});
     //console.log(res.json);
     //console.log('Project tasks fetched');
 
 })
 
+//create a new project
 router.post('/', verify, async (req, res) => {
     console.log('Access attempt')
     //console.log(req.header('auth-token'))
@@ -65,6 +79,7 @@ router.post('/', verify, async (req, res) => {
     }
 });
 
+//create a new task within a project
 router.post('/:id/tasks', verify, middleware.getProject, async (req,res) => {
     console.log('Add attempt');
     //console.log(req.body);
@@ -87,6 +102,7 @@ router.post('/:id/tasks', verify, middleware.getProject, async (req,res) => {
     }
 });
 
+//post a comment to a task
 router.post('/:id/tasks/:taskId/comments', verify, middleware.getTask, async (req, res) => {
     const task = res.task;
     const currentUserId = (jwt_decode(req.header('auth-token')))._id
@@ -105,6 +121,7 @@ router.post('/:id/tasks/:taskId/comments', verify, middleware.getTask, async (re
     }
 })
 
+//set status of a task to completed
 router.post('/:id/tasks/:taskId', verify, middleware.getTask, async (req, res) => {
     res.task.isCompleted = true;
 
@@ -117,6 +134,7 @@ router.post('/:id/tasks/:taskId', verify, middleware.getTask, async (req, res) =
     console.log("Task status: " + res.task.isCompleted)
 })
 
+//remove a task from a project
 router.delete('/:id/tasks/:taskId', verify, middleware.getTask, async (req, res) => {
     var task = res.task;
     console.log('trying to remove');
@@ -129,6 +147,7 @@ router.delete('/:id/tasks/:taskId', verify, middleware.getTask, async (req, res)
     
 });
 
+//remove a user from a project
 router.delete('/:id/users/:userId', verify, middleware.getProject, async (req, res) => {
     console.log('Trying to delete a user')
     var oneProject = res.project;
@@ -149,6 +168,7 @@ router.delete('/:id/users/:userId', verify, middleware.getProject, async (req, r
     }
 });
 
+//add a user to a project
 router.post('/:id/users', verify, middleware.getProject, async (req, res) => {
     const project = res.project;
     //console.log(req.body);
