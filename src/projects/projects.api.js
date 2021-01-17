@@ -32,14 +32,14 @@ router.get('/:id/tasks', verify, middleware.getProject, async (req, res) => {
         isAdmin = true
 
     var projectJSON = projectParent.toObject();
-    console.log("Current user: " + currentUserId)
+    //console.log("Current user: " + currentUserId)
     projectJSON.tasks.forEach((task) => {
         if(currentUserId==task.taskHolder)
             task.isMine = true;
         else
             task.isMine = false;
     })
-    console.log(projectJSON);
+    //console.log(projectJSON);
 
     //console.log(res.project.tasks);
 
@@ -59,7 +59,7 @@ router.post('/', verify, async (req, res) => {
     //console.log(req.header('auth-token'))
     try {
         const currentUserId = (jwt_decode(req.header('auth-token')))._id;
-        console.log(currentUserId);
+        //console.log(currentUserId);
         const createProject = new project({
             projectName: req.body.projectName,
             admins: currentUserId,
@@ -83,10 +83,11 @@ router.post('/', verify, async (req, res) => {
 router.post('/:id/tasks', verify, middleware.getProject, async (req,res) => {
     console.log('Add attempt');
     //console.log(req.body);
-    console.log(req.body.endDate);
+    //console.log(req.body.endDate);
     const splitDate = req.body.endDate.split("-");
     const newTask = new task({
         taskName: req.body.taskName,
+        userStory: req.body.userStory,
         endDate: new Date(splitDate[2], splitDate[1] - 1, splitDate[0]),
         taskHolder: req.body.taskHolder
 
@@ -131,7 +132,20 @@ router.post('/:id/tasks/:taskId', verify, middleware.getTask, async (req, res) =
     catch(err) {
         res.status(500).send({message: err.message});
     }
-    console.log("Task status: " + res.task.isCompleted)
+    //console.log("Task status: " + res.task.isCompleted)
+})
+
+
+//delete the project
+router.delete('/:id', verify, async(req, res) => {
+    try {
+        console.log('Project ' + req.params.id + ' is being deleted')
+        await project.findByIdAndDelete(req.params.id);
+        await user.updateMany({projects: req.params.id}, {$pullAll: {project: req.params.id}})
+    } catch(err) {
+        res.status(400).send({message: err.message});
+    }
+    return res.status(200).send({message: 'Successfuly deleted a project!'});
 })
 
 //remove a task from a project
@@ -168,7 +182,7 @@ router.delete('/:id/users/:userId', verify, middleware.getProject, async (req, r
     }
 });
 
-//add a user to a project
+//add a new user to a project
 router.post('/:id/users', verify, middleware.getProject, async (req, res) => {
     const project = res.project;
     //console.log(req.body);
@@ -177,6 +191,8 @@ router.post('/:id/users', verify, middleware.getProject, async (req, res) => {
 
 
         project.users.push({_id: addedUser._id});
+        if(req.body.addAsAdmin = true)
+        project.admins.push({_id: addedUser._id})
         await project.save();
         console.log('Added ' + addedUser.displayName)
 
