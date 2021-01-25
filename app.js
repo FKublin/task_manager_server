@@ -21,10 +21,7 @@ app.use(cors())
 app.use(bodyParser.urlencoded({
     extended: true
   }));
-app.get('/api/', (req, res) => {
-    console.log('api called');
-    res.send('Whatcha looking for here?');
-});
+
 app.use('/api/users', users);
 app.use('/api/projects', projects);
 
