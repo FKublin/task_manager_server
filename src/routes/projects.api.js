@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const project = require('./projects.model');
-const user = require('../users/users.model');
-const task = require('../tasks/tasks.model');
-const comment = require('../tasks/comment.model')
+const project = require('../models/projects.model');
+const user = require('../models/users.model');
+const task = require('../models/tasks.model');
+const comment = require('../models/comment.model')
 const verify = require('../verifyToken');
 const jwt_decode = require('jwt-decode')
 var middleware = require('../middleware');
@@ -20,6 +20,34 @@ router.get('/', verify, async (req, res) => {
     }
 
 });
+
+//get all tasks for current user
+router.get('/mytasks', async(req, res) => {
+    try {
+        const currentUserId = (jwt_decode(req.header('auth-token')))._id;
+        const projects = await project.find({users: currentUserId});
+        var projectsJSON = []
+        var myTasks = []
+        projects.forEach(project => {
+            projectsJSON.push(project.toObject())
+        })
+
+        projectsJSON.forEach(project => {
+            project.tasks.forEach(task => {
+                if(task.taskHolder==currentUserId) {
+                    task.projectId = project._id;
+                    task.projectName = project.projectName;
+                    myTasks.push(task)
+                }
+            })
+        })
+
+        res.json({data: myTasks})
+    }
+    catch(err) {
+        res.status(400).json({message: err.message});
+    }
+})
 
 //get tasks for specified project
 router.get('/:id/tasks', verify, middleware.getProject, async (req, res) => {
@@ -165,13 +193,14 @@ router.delete('/:id/tasks/:taskId', verify, middleware.getTask, async (req, res)
 router.delete('/:id/users/:userId', verify, middleware.getProject, async (req, res) => {
     console.log('Trying to delete a user')
     var oneProject = res.project;
-    if(oneProject.tasks.filter(task => task.taskHolder === req.params.userId).length > 0){
-        return res.status(400).send({message:'That user still holds tasks and cannot be deleted from this project'});
-    }
-    else{
+    // if(oneProject.tasks.filter(task => task.taskHolder === req.params.userId).length > 0){
+    //     return res.status(400).send({message:'That user still holds tasks and cannot be deleted from this project'});
+    // }
+    // else{
         try{
-            await project.update({_id: req.params.id}, {$pull: {users: req.params.userId}})
-            await project.update({_id: req.params.id}, {$pull: {admins: req.params.userId}})
+            await project.updateOne({_id: req.params.id}, {$pull: {users: req.params.userId}})
+            await project.updateOne({_id: req.params.id}, {$pull: {admins: req.params.userId}})
+            await project.updateOne({_id: req.params.id}, {$pull: {tasks: {taskHolder: req.params.userId}}})
             await user.update({_id: req.params.userId}, {$pull: {projects: req.params.id}})
             res.json({message: 'User has been deleted from this project'})
             res.send();
@@ -179,22 +208,28 @@ router.delete('/:id/users/:userId', verify, middleware.getProject, async (req, r
         catch(err) {
             res.status(400).json({message: err.message});
         }
-    }
+    //}
 });
 
 //add a new user to a project
 router.post('/:id/users', verify, middleware.getProject, async (req, res) => {
     const project = res.project;
-    //console.log(req.body);
+    console.log(req.body);
     const addedUser = await user.findOne({email: req.body.email})
     if(!addedUser) return res.status(400).send({message:'That user does not exists'});
 
+    const attemptedUser = await user.findOne({ email: req.body.email, projects: {"$in": [req.params.id]}});
+    if(attemptedUser!=null) return res.status(400).send({message:'This user is already in this project'});
 
-        project.users.push({_id: addedUser._id});
-        if(req.body.addAsAdmin = true)
+    addedUser.projects.push({_id: req.params.id})
+    await addedUser.save();
+
+    project.users.push({_id: addedUser._id});
+    if(req.body.addAsAdmin == true){
         project.admins.push({_id: addedUser._id})
-        await project.save();
-        console.log('Added ' + addedUser.displayName)
+    }
+    await project.save();
+    console.log('Added ' + addedUser.displayName)
 
 })
 
