@@ -1,7 +1,8 @@
 const project = require('../models/projects.model');
 
 module.exports = {
-    getProject:async function (req, res, next) {
+
+    getProject: async function (req, res, next) {
         try {
             oneProject = await project.findById(req.params.id);
             if(oneProject == null) {
@@ -15,7 +16,8 @@ module.exports = {
         res.project = oneProject;
         next();
     },
-    getTask:async function (req, res, next) {
+
+    getTask: async function (req, res, next) {
         try {
             oneProject = await project.findById(req.params.id);
             oneTask = oneProject.tasks.id(req.params.taskId);

@@ -31,7 +31,6 @@ router.get('/mytasks', async(req, res) => {
         projects.forEach(project => {
             projectsJSON.push(project.toObject())
         })
-
         projectsJSON.forEach(project => {
             project.tasks.forEach(task => {
                 if(task.taskHolder==currentUserId) {
@@ -41,7 +40,6 @@ router.get('/mytasks', async(req, res) => {
                 }
             })
         })
-
         res.json({data: myTasks})
     }
     catch(err) {
@@ -53,35 +51,27 @@ router.get('/mytasks', async(req, res) => {
 router.get('/:id/tasks', verify, middleware.getProject, async (req, res) => {
     const currentUserId = (jwt_decode(req.header('auth-token')))._id
     const projectParent = res.project;
-
     const usersFound = await user.find({_id: projectParent.users});
-    var isAdmin = false
+    var isAdmin = false;
     if(projectParent.admins.find(userId => userId==currentUserId))
-        isAdmin = true
+        isAdmin = true;
 
     var projectJSON = projectParent.toObject();
-
     projectJSON.tasks.forEach((task) => {
         if(currentUserId==task.taskHolder)
             task.isMine = true;
         else
             task.isMine = false;
     })
-
-
     var users = [];
     usersFound.forEach((user) => {
         users.push({id: user._id, userName: user.displayName})
     })
     res.json({data: projectJSON.tasks, users, isAdmin});
-
-
 })
 
 //create a new project
 router.post('/', verify, async (req, res) => {
-    console.log('Access attempt')
-
     try {
         const currentUserId = (jwt_decode(req.header('auth-token')))._id;
 
@@ -92,7 +82,6 @@ router.post('/', verify, async (req, res) => {
         });
 
         const saveProject = await createProject.save();
-
         const currrentUser = await user.findById(currentUserId);
         currrentUser.projects.push({_id: saveProject._id});
         await currrentUser.save();
@@ -106,8 +95,6 @@ router.post('/', verify, async (req, res) => {
 
 //create a new task within a project
 router.post('/:id/tasks', verify, middleware.getProject, async (req,res) => {
-    console.log('Add attempt');
-
     const splitDate = req.body.endDate.split("-");
     const newTask = new task({
         taskName: req.body.taskName,
@@ -175,20 +162,17 @@ router.delete('/:id', verify, async(req, res) => {
 //remove a task from a project
 router.delete('/:id/tasks/:taskId', verify, middleware.getTask, async (req, res) => {
     var task = res.task;
-    console.log('trying to remove');
 
     try{
         await project.updateOne({_id: req.params.id}, {$pullAll: {tasks:[task]}});
     } catch(err) {
         console.log(err.message);
     }
-    
 });
 
 //remove a user from a project
 router.delete('/:id/users/:userId', verify, middleware.getProject, async (req, res) => {
     console.log('Trying to delete a user')
-    var oneProject = res.project;
         try{
             await project.updateOne({_id: req.params.id}, {$pull: {users: req.params.userId}})
             await project.updateOne({_id: req.params.id}, {$pull: {admins: req.params.userId}})

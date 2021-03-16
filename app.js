@@ -25,7 +25,6 @@ app.use(bodyParser.urlencoded({
 app.use('/api/users', users);
 app.use('/api/projects', projects);
 
-
 app.listen(3000, () => {
     console.log('Authentication service started on port 3000');
 });

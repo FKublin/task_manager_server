@@ -10,6 +10,8 @@ router.post('/register', async (req, res) => {
 
     const checkEmail = await User.findOne({email: req.body.email});
     if(checkEmail) return res.status(400).send('Email already taken');
+    if(!req.body.password || req.body.password.length==0) return res.status(400).send('You must submit a password')
+    if(req.body.password!=req.body.confirmPassword) return res.status(400).send('Passwords must match')
 
     const salt = await bcrypt.genSalt(10);
     const hashPassword = await bcrypt.hash(req.body.password, salt);
